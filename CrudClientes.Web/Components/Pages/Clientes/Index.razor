@@ -1,0 +1,79 @@
+﻿@page "/clientes"
+
+<h3>Clientes <span class="btn btn-success"> + </span></h3>
+@if (ShowForm)
+{
+    <div class="container">
+        <h4>Registrar nuevo cliente</h4>
+        <EditForm FormName="clienteForm" Model="@Request">
+            <DataAnnotationsValidator/>
+            <div class="mt-2">
+                <label class="form-label">Nombre:</label>
+                <input class="form-control" @bind="Request.Nombre"/>
+                <ValidationMessage For="()=>Request.Nombre"/>
+            </div>
+            <input class="btn btn-success" type="submit" value="Ok"/>
+        </EditForm>
+    </div>
+}
+else
+{
+    <div class="input-group mb-3">
+      <span class="input-group-text" id="basic-addon1">Busqueda</span>
+      <input @bind="Filtro" type="text" class="form-control" placeholder="Escribe el dato a consultar" aria-label="filtro" aria-describedby="basic-addon1">
+        <span @onclick="Consultar" class="btn btn-outline-success" >
+            Buscar
+      </span>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">...</th>
+                <th scope="col">Código</th>
+                <th scope="col">Nombre</th>
+                <th scope="col">Teléfono</th>
+                <th scope="col">Correo Electrónico</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Listado.Count > 0)
+            {
+                @foreach (var cliente in Listado)
+                {
+                    <tr>
+                        <th scope="row">
+                            <div class="btn-group">
+                                <span class="btn btn-outline-warning">Editar</span>
+                                <span class="btn btn-outline-danger">Eliminar</span>
+                            </div>
+                        </th>
+                        <th>@cliente.Id</th>
+                        <th>@cliente.Nombre</th>
+                        <th>@cliente.Telefono</th>
+                        <th>@cliente.Email</th>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <th colspan="5">
+                        <center>No hay registros</center>
+                    </th>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@code {
+    public bool ShowForm { get; set; } = true;
+    public ClienteDto Request { get; set; } = new();
+
+    public string Filtro { get; set; } = string.Empty;
+    public List<ClienteDto> Listado { get; set; } = [];
+    /// <summary>
+    /// Metodo para consultar los clientes
+    /// </summary>
+    /// <returns></returns>
+    private async Task Consultar() {  }
+}
