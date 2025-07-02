@@ -18,12 +18,16 @@ namespace CrudClientes.Web.Data.Dtos
          */
         public int Id { get; set; }
         [Required(ErrorMessage = "El campo Nombre es obligatorio.")]
+        [MaxLength(100, ErrorMessage = "solo se aceptan 100 caracteres")]
         public string Nombre { get; set; } = string.Empty;
+        [Required(ErrorMessage = "El campo Email es obligatorio.")]
+        [EmailAddress]
         public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "El telefono es invalido.")]
         public string? Telefono { get; set; }
         public string? Direccion { get; set; }
         public DateTime FechaCreacion { get; set; } = DateTime.Now;
+        [Required(ErrorMessage = "El cliente debe estar Activo.")]
         public bool Activo { get; set; } = true;
-
     }
 }

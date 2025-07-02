@@ -1,34 +1,79 @@
-﻿@page "/clientes"
+﻿
+@rendermode InteractiveServer
+@page "/clientes"
 
-<h3>Clientes <span class="btn btn-success"> + </span></h3>
-@if (ShowForm)
+<h3 class ="d-print-none">Clientes <span class="btn btn-success" @onclick="ToggleForm"> + </span></h3>
+@* Componente para gestionar clientes *@
+@if (ShowForm )
 {
     <div class="container">
         <h4>Registrar nuevo cliente</h4>
-        <EditForm FormName="clienteForm" Model="@Request">
-            <DataAnnotationsValidator/>
-            <div class="mt-2">
-                <label class="form-label">Nombre:</label>
-                <input class="form-control" @bind="Request.Nombre"/>
-                <ValidationMessage For="()=>Request.Nombre"/>
+        <EditForm Model="@cliente" OnValidSubmit="CrearCliente">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label>Nombre</label>
+                <InputText class="form-control" @bind-Value="cliente.Nombre" />
+                <ValidationMessage For="@(() => cliente.Nombre)" />
             </div>
-            <input class="btn btn-success" type="submit" value="Ok"/>
+            <div class="mb-3">
+                <label>Email</label>
+                <InputText class="form-control" @bind-Value="cliente.Email" />
+                <ValidationMessage For="@(() => cliente.Email)" />
+            </div>
+            <div class="mb-3">
+                <label>Teléfono</label>
+                <InputText class="form-control" @bind-Value="cliente.Telefono" />
+                <ValidationMessage For="@(() => cliente.Telefono)" />
+            </div>
+            <div class="mb-3">
+                <label>Dirección</label>
+                <InputText class="form-control" @bind-Value="cliente.Direccion" />
+                <ValidationMessage For="@(() => cliente.Direccion)" />
+            </div>
+            <div class="mt-2 mb-2">
+                <label class="form-label">Activo:</label>
+                <InputCheckbox class="form-check" @bind-Value="cliente.Activo" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="display:@(cliente.Id == 0 ? "inline-block" : "none")">Crear</button>
+            <button @onclick="()=>{ ShowForm = false; }" class="btn btn-danger" type="button">Cancelar</button>
+            <button type="button" class="btn btn-warning" style="display:@(cliente.Id != 0 ? "inline-block" : "none")" @onclick="Actualizar">Aceptar</button>
+
         </EditForm>
+
+        @if (Mensaje != null)
+        {
+            <div class="alert alert-info mt-3">@Mensaje</div>
+        }
     </div>
+
 }
+@* Mostrar el formulario de creación de cliente *@
 else
 {
-    <div class="input-group mb-3">
-      <span class="input-group-text" id="basic-addon1">Busqueda</span>
-      <input @bind="Filtro" type="text" class="form-control" placeholder="Escribe el dato a consultar" aria-label="filtro" aria-describedby="basic-addon1">
+    <div class="input-group mb-3 d-print-none">
+        <span class="input-group-text" id="basic-addon1">Busqueda</span>
+        <input @bind="Filtro" type="text" class="form-control" placeholder="Escribe el cliente a consultar" aria-label="filtro" aria-describedby="basic-addon1">
         <span @onclick="Consultar" class="btn btn-outline-success" >
             Buscar
-      </span>
+        </span>
     </div>
+    <div class="mb-3 d-print-none">
+        <div class="form-check">
+            <input checked="@SoloActivos" class="form-check-input" type="checkbox" @onchange="ClientesActivos" id="checkDefault">
+            <label class="form-check-label" for="checkDefault">
+                Solo activos
+            </label>
+        </div>
+        <button class="btn btn-primary d-print-none mb-2" @onclick="Imprimir">Imprimir</button>
+
+    </div>
+    <h1 class="d-none d-print-block">Reporte de clientes</h1>
     <table class="table">
         <thead>
             <tr>
-                <th scope="col">...</th>
+                <th scope="col" class="d-print-none">...</th>
                 <th scope="col">Código</th>
                 <th scope="col">Nombre</th>
                 <th scope="col">Teléfono</th>
@@ -36,15 +81,16 @@ else
             </tr>
         </thead>
         <tbody>
-            @if (Listado.Count > 0)
+
+            @if (clientes?.Count > 0)
             {
-                @foreach (var cliente in Listado)
+                @foreach (var cliente in clientes)
                 {
                     <tr>
-                        <th scope="row">
+                        <th scope="row" class="d-print-none">
                             <div class="btn-group">
-                                <span class="btn btn-outline-warning">Editar</span>
-                                <span class="btn btn-outline-danger">Eliminar</span>
+                                <span class="btn btn-outline-warning" @onclick="() => EditarCliente(cliente)">Editar</span>
+                                <span class="btn btn-outline-danger" @onclick="() => EliminarCliente(cliente)">Eliminar</span>
                             </div>
                         </th>
                         <th>@cliente.Id</th>
@@ -65,15 +111,179 @@ else
         </tbody>
     </table>
 }
-@code {
-    public bool ShowForm { get; set; } = true;
-    public ClienteDto Request { get; set; } = new();
 
+@code {
+    private List<ClienteDto>? clientes;
+    private string Mensaje = "";
+    public bool SoloActivos { get; set; } = true;
+    private ClienteDto cliente = new ClienteDto();
+    // Este método se invoca al enviar el formulario para crear un nuevo cliente
+    private void CrearCliente()
+    {
+        // Validar que el cliente tenga un nombre y un email
+        var creado = ClienteService.Crear(cliente);
+        // Si el cliente fue creado correctamente, se limpia el formulario y se muestra un mensaje
+       
+        if (creado)
+        {
+           
+            Mensaje = "Cliente creado correctamente.";
+            cliente = new ClienteDto();
+
+        }
+        // Si hubo un error al crear el cliente, se muestra un mensaje de error
+        else
+        {
+            Mensaje = "Error al crear el cliente.";
+        }
+    }
+    private async Task Imprimir()
+    {
+        await JS.InvokeVoidAsync("imprimir");
+    }
+    protected override void OnInitialized()
+    {
+        clientes = ClienteService.GetClientes()
+        .Where(c => c.Activo)
+        .ToList();
+    }
+
+    public bool ShowForm { get; set; } = false;
     public string Filtro { get; set; } = string.Empty;
     public List<ClienteDto> Listado { get; set; } = [];
     /// <summary>
     /// Metodo para consultar los clientes
     /// </summary>
     /// <returns></returns>
-    private async Task Consultar() {  }
+    // Este método se invoca al hacer clic en el botón de búsqueda
+    private async Task Consultar()
+    {
+        var todos = ClienteService.GetClientes()
+        .Where(c => c.Activo)
+        .ToList();
+        // Si el filtro está vacío, obtiene todos los clientes
+        if (string.IsNullOrWhiteSpace(Filtro))
+        {
+            // si no filtra, obtiene todos los clientes
+            clientes = ClienteService.GetClientes();
+        }
+        else
+        {
+            // Si el filtro no está vacío, filtra los clientes según el criterio ingresado
+            clientes = todos
+                // Filtra los clientes según el filtro ingresado
+                .Where(c =>
+                    (int.TryParse(Filtro, out var idFiltro) && c.Id == idFiltro) ||
+                    (!string.IsNullOrEmpty(c.Nombre) && c.Nombre.Contains(Filtro, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(c.Email) && c.Email.Contains(Filtro, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(c.Telefono) && c.Telefono.Contains(Filtro, StringComparison.OrdinalIgnoreCase))
+                )
+                .ToList();
+        }
+        StateHasChanged();
+    }
+    // Método para alternar la visibilidad del formulario de creación/edición de clientes
+    private void ToggleForm()
+    {
+        ShowForm = !ShowForm;
+        clientes = ClienteService.GetClientes()
+            .Where(c => c.Activo)
+            .ToList();
+
+    }
+    // Método para eliminar un cliente
+    private async Task EliminarCliente(ClienteDto cliente)
+    {
+        // Verifica si el cliente no es nulo antes de intentar eliminarlo
+
+
+        bool confirmado = await JS.InvokeAsync<bool>("confirmar", $"¿Está seguro que desea eliminar el cliente '{cliente.Nombre}'?");
+        if (!confirmado)
+            return;
+        // Llama al servicio para eliminar el cliente y actualiza la lista de clientes
+        var (eliminado, mensaje) = ClienteService.Eliminar(cliente.Id);
+        await JS.InvokeVoidAsync("alerta", mensaje);
+        if (eliminado)
+        {
+            Mensaje = "Cliente eliminado correctamente.";
+            clientes?.Remove(cliente);
+        }
+
+        {
+            Mensaje = "Error al eliminar el cliente.";
+        }
+
+    }
+
+    // Método para editar un cliente 
+    private void EditarCliente(ClienteDto clienteEditar)
+    {
+        // Verifica si el cliente a editar no es nulo
+        if (clienteEditar != null)
+        {
+            // Crea una copia del cliente a editar para evitar modificar el original directamente
+            cliente = new ClienteDto
+            {
+                Id = clienteEditar.Id,
+                Nombre = clienteEditar.Nombre,
+                Email = clienteEditar.Email,
+                Telefono = clienteEditar.Telefono,
+                Direccion = clienteEditar.Direccion,
+                FechaCreacion = clienteEditar.FechaCreacion,
+                Activo = clienteEditar.Activo
+            };
+            ShowForm = true;
+            Mensaje = $"Editando cliente: {clienteEditar.Nombre}";
+        }
+    }
+    // Método para actualizar un cliente
+    private void Actualizar()
+    {
+        // Verifica si el cliente a actualizar tiene un Id válido
+        var (actualizado, mensaje) = ClienteService.Actualizar(cliente);
+        // Si la actualización fue exitosa, muestra un mensaje y limpia el formulario
+        if (actualizado)
+        {
+            // Muestra un mensaje de éxito
+            Mensaje = "Cliente actualizado correctamente.";
+            cliente = new ClienteDto();
+            ShowForm = false;
+            clientes = ClienteService.GetClientes()
+            .Where(c => c.Activo)
+            .ToList();
+        }
+        // Si hubo un error al actualizar el cliente, muestra un mensaje de error
+        else
+        {
+            Mensaje = "Error al actualizar el cliente.";
+        }
+    }
+	// Método para manejar el cambio del checkbox "Solo Activos"
+    private async Task ClientesActivos(ChangeEventArgs a)
+    {
+		// Actualiza el estado de "SoloActivos" según el valor del checkbox
+		SoloActivos = (bool)a.Value!;
+		await CargarClientes();
+		StateHasChanged();
+    }
+    
+	//Método para cargar los clientes según el estado de "SoloActivos"
+    private async Task CargarClientes()
+    {
+		// Obtiene todos los clientes del servicio
+        var TodosClientes = ClienteService.GetClientes();
+		// Filtra los clientes según el estado de "SoloActivos"
+        if (SoloActivos)
+        {
+			// Si "SoloActivos" es verdadero, obtiene solo los clientes activos
+            clientes = TodosClientes.Where(c => c.Activo).ToList();
+        }
+        else
+        {
+			// Si "SoloActivos" es falso, obtiene todos los clientes sin filtrar
+            clientes = TodosClientes.ToList();
+        }
+		// Actualiza el estado del componente para reflejar los cambios
+        await Task.CompletedTask; 
+    }
 }
